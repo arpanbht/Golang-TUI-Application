@@ -1,6 +1,6 @@
 build:
 	@go build -o tuiapp.exe .
 
-run:
-	@./tuiapp
+run: build
+	@./tuiapp.exe
 
