@@ -2,33 +2,74 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	textinput "github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
+var (
+	vaultDir string
+
+	cursorStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("110"))
+	inputPlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("217"))
+	cursorLineStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("189"))
+	// bulletPromtStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("63")).Bold(true)
+)
+
 type model struct {
-	msg string
+	newFileInput           textinput.Model
+	createFileInputVisible bool
 }
 
 func initialModel() model {
+	err := os.MkdirAll(vaultDir, 0750)
+	if err != nil {
+		log.Fatal("Error creating vault directory ⛔", err)
+	}
+
+	ti := textinput.New()
+	ti.Placeholder = "What would be the file name?"
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 50
+	ti.Cursor.Style = cursorStyle
+	ti.TextStyle = cursorLineStyle
+	ti.PlaceholderStyle = inputPlaceholderStyle
+	ti.Prompt = "⚡ "
+
 	return model{
-		msg: "Hello, Bubble Tea!",
+		newFileInput:           ti,
+		createFileInputVisible: false,
 	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
 
 		switch msg.String() {
-		case "ctrl+c", "q":
+
+		case "ctrl+c", "ctrl+q":
 			return m, tea.Quit
+
+		case "ctrl+n":
+			m.createFileInputVisible = true
+			return m, nil
+
+		case "enter":
+
 		}
 	}
-	return m, nil
+
+	if m.createFileInputVisible {
+		m.newFileInput, cmd = m.newFileInput.Update(msg)
+	}
+	return m, cmd
 }
 
 func (m model) View() string {
@@ -43,6 +84,10 @@ func (m model) View() string {
 
 	view := ""
 
+	if m.createFileInputVisible {
+		view = m.newFileInput.View()
+	}
+
 	var styleHelp = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("247")).
 		Italic(true).
@@ -56,6 +101,15 @@ func (m model) View() string {
 func (m model) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
 	return nil
+}
+
+func init() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal("Error getting home directory ⛔", err)
+	}
+
+	vaultDir = fmt.Sprintf("%s/.vault", homeDir)
 }
 
 func main() {
